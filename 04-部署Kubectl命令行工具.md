@@ -20,7 +20,7 @@ The connection to the server localhost:8080 was refused - did you specify the ri
 本文档用到的变量定义如下：
 
 ``` bash
-$ export MASTER_IP=10.64.3.7 # 替换为 kubernetes maste 集群任一机器 IP
+$ export MASTER_IP=10.8.0.50 # 替换为 kubernetes maste 集群任一机器 IP
 $ export KUBE_APISERVER="https://${MASTER_IP}:6443"
 $
 ```
@@ -32,9 +32,9 @@ $
 ``` bash
 $ wget https://dl.k8s.io/v1.6.2/kubernetes-client-linux-amd64.tar.gz
 $ tar -xzvf kubernetes-client-linux-amd64.tar.gz
-$ sudo cp kubernetes/client/bin/kube* /root/local/bin/
-$ chmod a+x /root/local/bin/kube*
-$ export PATH=/root/local/bin:$PATH
+$ sudo cp kubernetes/client/bin/kube* /usr/bin/
+$ sudo chmod a+x /usr/bin/kube*
+$ export PATH=/usr/bin:$PATH
 $
 ```
 

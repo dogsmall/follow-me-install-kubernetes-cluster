@@ -15,7 +15,7 @@ CLUSTER_CIDR="172.30.0.0/16"
 export NODE_PORT_RANGE="8400-9000"
 
 # etcd 集群服务地址列表
-export ETCD_ENDPOINTS="https://10.64.3.7:2379,https://10.64.3.8:2379,https://10.66.3.86:2379"
+export ETCD_ENDPOINTS="https://10.8.0.50:2379,https://10.8.0.10:2379,https://10.8.0.62:2379"
 
 # flanneld 网络配置前缀
 export FLANNEL_ETCD_PREFIX="/kubernetes/network"

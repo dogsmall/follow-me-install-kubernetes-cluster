@@ -26,9 +26,9 @@ master 节点与 node 节点上的 Pods 通过 Pod 网络通信，所以需要�
 本文档用到的变量定义如下：
 
 ``` bash
-$ export MASTER_IP=10.64.3.7  # 替换为当前部署的 master 机器 IP
+$ export MASTER_IP=10.8.0.50  # 替换为当前部署的 master 机器 IP
 $ # 导入用到的其它全局变量：SERVICE_CIDR、CLUSTER_CIDR、NODE_PORT_RANGE、ETCD_ENDPOINTS、BOOTSTRAP_TOKEN
-$ source /root/local/bin/environment.sh
+$ source /usr/bin/environment.sh
 $
 ```
 
@@ -63,7 +63,7 @@ $
 将二进制文件拷贝到指定路径：
 
 ``` bash
-$ sudo cp -r server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /root/local/bin/
+$ sudo cp -r server/bin/{kube-apiserver,kube-controller-manager,kube-scheduler,kubectl,kube-proxy,kubelet} /usr/bin/
 $
 ```
 
@@ -154,7 +154,7 @@ Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 After=network.target
 
 [Service]
-ExecStart=/root/local/bin/kube-apiserver \\
+ExecStart=/usr/bin/kube-apiserver \\
   --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,DefaultStorageClass,ResourceQuota \\
   --advertise-address=${MASTER_IP} \\
   --bind-address=${MASTER_IP} \\
@@ -229,7 +229,7 @@ Description=Kubernetes Controller Manager
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 
 [Service]
-ExecStart=/root/local/bin/kube-controller-manager \\
+ExecStart=/usr/bin/kube-controller-manager \\
   --address=127.0.0.1 \\
   --master=http://${MASTER_IP}:8080 \\
   --allocate-node-cidrs=true \\
@@ -291,7 +291,7 @@ Description=Kubernetes Scheduler
 Documentation=https://github.com/GoogleCloudPlatform/kubernetes
 
 [Service]
-ExecStart=/root/local/bin/kube-scheduler \\
+ExecStart=/usr/bin/kube-scheduler \\
   --address=127.0.0.1 \\
   --master=http://${MASTER_IP}:8080 \\
   --leader-elect=true \\

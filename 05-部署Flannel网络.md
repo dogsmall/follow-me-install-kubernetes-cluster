@@ -11,9 +11,9 @@ kubernetes 要求集群内各节点能通过 Pod 网段互联互通，本文档�
 本文档用到的变量定义如下：
 
 ``` bash
-$ export NODE_IP=10.64.3.7 # 当前部署节点的 IP
+$ export NODE_IP=10.8.0.X # 当前部署节点的 IP
 $ # 导入用到的其它全局变量：ETCD_ENDPOINTS、FLANNEL_ETCD_PREFIX、CLUSTER_CIDR
-$ source /root/local/bin/environment.sh
+$ source /usr/bin/environment.sh
 $
 ```
 
@@ -66,7 +66,7 @@ $ rm flanneld.csr  flanneld-csr.json
 注意：本步骤只需在**第一次**部署 Flannel 网络时执行，后续在其它节点上部署 Flannel 时**无需**再写入该信息！
 
 ``` bash
-$ /root/local/bin/etcdctl \
+$ /usr/bin/etcdctl \
   --endpoints=${ETCD_ENDPOINTS} \
   --ca-file=/etc/kubernetes/ssl/ca.pem \
   --cert-file=/etc/flanneld/ssl/flanneld.pem \
@@ -85,7 +85,7 @@ $ /root/local/bin/etcdctl \
 $ mkdir flannel
 $ wget https://github.com/coreos/flannel/releases/download/v0.7.1/flannel-v0.7.1-linux-amd64.tar.gz
 $ tar -xzvf flannel-v0.7.1-linux-amd64.tar.gz -C flannel
-$ sudo cp flannel/{flanneld,mk-docker-opts.sh} /root/local/bin
+$ sudo cp flannel/{flanneld,mk-docker-opts.sh} /usr/bin
 $
 ```
 
@@ -103,13 +103,14 @@ Before=docker.service
 
 [Service]
 Type=notify
-ExecStart=/root/local/bin/flanneld \\
+ExecStart=/usr/bin/flanneld \\
   -etcd-cafile=/etc/kubernetes/ssl/ca.pem \\
   -etcd-certfile=/etc/flanneld/ssl/flanneld.pem \\
   -etcd-keyfile=/etc/flanneld/ssl/flanneld-key.pem \\
   -etcd-endpoints=${ETCD_ENDPOINTS} \\
-  -etcd-prefix=${FLANNEL_ETCD_PREFIX}
-ExecStartPost=/root/local/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/docker
+  -etcd-prefix=${FLANNEL_ETCD_PREFIX} \\
+  -iface=tun0
+ExecStartPost=/usr/bin/mk-docker-opts.sh -k DOCKER_NETWORK_OPTIONS -d /run/flannel/docker
 Restart=on-failure
 
 [Install]
@@ -146,7 +147,7 @@ $
 
 ``` bash
 $ # 查看集群 Pod 网段(/16)
-$ /root/local/bin/etcdctl \
+$ /usr/bin/etcdctl \
   --endpoints=${ETCD_ENDPOINTS} \
   --ca-file=/etc/kubernetes/ssl/ca.pem \
   --cert-file=/etc/flanneld/ssl/flanneld.pem \
@@ -154,7 +155,7 @@ $ /root/local/bin/etcdctl \
   get ${FLANNEL_ETCD_PREFIX}/config
 { "Network": "172.30.0.0/16", "SubnetLen": 24, "Backend": { "Type": "vxlan" } }
 $ # 查看已分配的 Pod 子网段列表(/24)
-$ /root/local/bin/etcdctl \
+$ /usr/bin/etcdctl \
   --endpoints=${ETCD_ENDPOINTS} \
   --ca-file=/etc/kubernetes/ssl/ca.pem \
   --cert-file=/etc/flanneld/ssl/flanneld.pem \
@@ -162,13 +163,13 @@ $ /root/local/bin/etcdctl \
   ls ${FLANNEL_ETCD_PREFIX}/subnets
 /kubernetes/network/subnets/172.30.19.0-24
 $ # 查看某一 Pod 网段对应的 flanneld 进程监听的 IP 和网络参数
-$ /root/local/bin/etcdctl \
+$ /usr/bin/etcdctl \
   --endpoints=${ETCD_ENDPOINTS} \
   --ca-file=/etc/kubernetes/ssl/ca.pem \
   --cert-file=/etc/flanneld/ssl/flanneld.pem \
   --key-file=/etc/flanneld/ssl/flanneld-key.pem \
   get ${FLANNEL_ETCD_PREFIX}/subnets/172.30.19.0-24
-{"PublicIP":"10.64.3.7","BackendType":"vxlan","BackendData":{"VtepMAC":"d6:51:2e:80:5c:69"}}
+{"PublicIP":"10.8.0.50","BackendType":"vxlan","BackendData":{"VtepMAC":"d6:51:2e:80:5c:69"}}
 ```
 
 ### 确保各节点间 Pod 网段能互联互通
@@ -176,7 +177,7 @@ $ /root/local/bin/etcdctl \
 在**各节点上部署完** Flannel 后，查看已分配的 Pod 子网段列表(/24)
 
 ``` bash
-$ /root/local/bin/etcdctl \
+$ /usr/bin/etcdctl \
   --endpoints=${ETCD_ENDPOINTS} \
   --ca-file=/etc/kubernetes/ssl/ca.pem \
   --cert-file=/etc/flanneld/ssl/flanneld.pem \

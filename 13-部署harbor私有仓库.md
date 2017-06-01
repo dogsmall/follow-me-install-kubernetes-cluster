@@ -7,7 +7,7 @@
 本文档用到的变量定义如下：
 
 ``` bash
-$ export NODE_IP=10.64.3.7 # 当前部署 harbor 的节点 IP
+$ export NODE_IP=10.8.0.50 # 当前部署 harbor 的节点 IP
 $
 ```
 
@@ -17,9 +17,9 @@ $
 
 ``` bash
 $ wget https://github.com/docker/compose/releases/download/1.12.0/docker-compose-Linux-x86_64
-$ mv ~/docker-compose-Linux-x86_64 /root/local/bin/docker-compose
-$ chmod a+x  /root/local/bin/docker-compose
-$ export PATH=/root/local/bin:$PATH
+$ mv ~/docker-compose-Linux-x86_64 /usr/bin/docker-compose
+$ chmod a+x  /usr/bin/docker-compose
+$ export PATH=/usr/bin:$PATH
 $
 ```
 
@@ -93,7 +93,7 @@ $ diff harbor.cfg.orig harbor.cfg
 5c5
 < hostname = reg.mydomain.com
 ---
-> hostname = 10.64.3.7
+> hostname = 10.8.0.50
 9c9
 < ui_url_protocol = http
 ---
@@ -159,13 +159,13 @@ Creating nginx
 
 ✔ ----Harbor has been installed and started successfully.----
 
-Now you should be able to visit the admin portal at https://10.64.3.7.
+Now you should be able to visit the admin portal at https://10.8.0.50.
 For more details, please visit https://github.com/vmware/harbor .
 ```
 
 ## 访问管理界面
 
-浏览器访问 `https://${NODE_IP}`，示例的是 `https://10.64.3.7`
+浏览器访问 `https://${NODE_IP}`，示例的是 `https://10.8.0.50`
 
 用账号 `admin` 和 harbor.cfg 配置文件中的默认密码 `Harbor12345` 登陆系统：
 
@@ -184,18 +184,18 @@ ca_download  config  database  job_logs registry  secretkey
 
 ## docker 客户端登陆
 
-将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/10.64.3.7` 目录下
+将签署 harbor 证书的 CA 证书拷贝到 `/etc/docker/certs.d/10.8.0.50` 目录下
 
 ``` bash
-$ sudo mkdir -p /etc/docker/certs.d/10.64.3.7
-$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/10.64.3.7/ca.crt
+$ sudo mkdir -p /etc/docker/certs.d/10.8.0.50
+$ sudo cp /etc/kubernetes/ssl/ca.pem /etc/docker/certs.d/10.8.0.50/ca.crt
 $
 ```
 
 登陆 harbor
 
 ``` bash
-$ docker login 10.64.3.7
+$ docker login 10.8.0.50
 Username: admin
 Password:
 ```

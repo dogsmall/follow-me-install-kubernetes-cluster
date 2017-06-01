@@ -17,12 +17,12 @@ kubernetes Node 节点包含如下组件：
 
 ``` bash
 $ # 替换为 kubernetes master 集群任一机器 IP
-$ export MASTER_IP=10.64.3.7
+$ export MASTER_IP=10.8.0.50
 $ export KUBE_APISERVER="https://${MASTER_IP}:6443"
 $ # 当前部署的节点 IP
-$ export NODE_IP=10.64.3.7
+$ export NODE_IP=10.8.0.x
 $ # 导入用到的其它全局变量：ETCD_ENDPOINTS、FLANNEL_ETCD_PREFIX、CLUSTER_CIDR、CLUSTER_DNS_SVC_IP、CLUSTER_DNS_DOMAIN、SERVICE_CIDR
-$ source /root/local/bin/environment.sh
+$ source /usr/bin/environment.sh
 $
 ```
 
@@ -37,23 +37,24 @@ $
 ``` bash
 $ wget https://get.docker.com/builds/Linux/x86_64/docker-17.04.0-ce.tgz
 $ tar -xvf docker-17.04.0-ce.tgz
-$ cp docker/docker* /root/local/bin
-$ cp docker/completion/bash/docker /etc/bash_completion.d/
-$
+$ sudo cp docker/docker* /usr/bin
+$ sudo cp docker/completion/bash/docker /etc/bash_completion.d/
+$ source /run/flannel/docker
+$ curl -sSL https://get.daocloud.io/daotools/set_mirror.sh | sh -s http://5778dd4b.m.daocloud.io
 ```
 
 ### 创建 docker 的 systemd unit 文件
 
 ``` bash
-$ cat docker.service
+$ cat>docker.service<<EOF
 [Unit]
 Description=Docker Application Container Engine
 Documentation=http://docs.docker.io
 
 [Service]
-Environment="PATH=/root/local/bin:/bin:/sbin:/usr/bin:/usr/sbin"
+Environment="PATH=/usr/bin:/bin:/sbin:/usr/bin:/usr/sbin"
 EnvironmentFile=-/run/flannel/docker
-ExecStart=/root/local/bin/dockerd --log-level=error $DOCKER_NETWORK_OPTIONS
+ExecStart=/usr/bin/dockerd --log-level=error $DOCKER_NETWORK_OPTIONS
 ExecReload=/bin/kill -s HUP $MAINPID
 Restart=on-failure
 RestartSec=5
@@ -65,6 +66,7 @@ KillMode=process
 
 [Install]
 WantedBy=multi-user.target
+EOF
 ```
 
 + dockerd 运行时会调用其它 docker 命令，如 docker-proxy，所以需要将 docker 命令所在的目录加到 PATH 环境变量中；
@@ -75,7 +77,7 @@ WantedBy=multi-user.target
 + docker 从 1.13 版本开始，可能将 **iptables FORWARD chain的默认策略设置为DROP**，从而导致 ping 其它 Node 上的 Pod IP 失败，遇到这种情况时，需要手动设置策略为 `ACCEPT`：
 
   ``` bash
-  $ sudo iptables -P FORWARD ACCEPT
+  $ 
   $
   ```
 
@@ -101,7 +103,8 @@ $ sudo systemctl disable firewalld
 $ sudo iptables -F && sudo iptables -X && sudo iptables -F -t nat && sudo iptables -X -t nat
 $ sudo systemctl enable docker
 $ sudo systemctl start docker
-$
+$ systemctl status docker
+$ sudo iptables -P FORWARD ACCEPT
 ```
 
 + 需要关闭 firewalld，否则可能会重复创建的 iptables 规则；
@@ -132,8 +135,8 @@ $ wget https://dl.k8s.io/v1.6.2/kubernetes-server-linux-amd64.tar.gz
 $ tar -xzvf kubernetes-server-linux-amd64.tar.gz
 $ cd kubernetes
 $ tar -xzvf  kubernetes-src.tar.gz
-$ sudo cp -r ./server/bin/{kube-proxy,kubelet} /root/local/bin/
-$
+$ sudo cp -r ./server/bin/{kube-proxy,kubelet} /usr/bin/
+$ sudo chmod a+x /usr/bin/kube*
 ```
 
 ## 创建 kubelet bootstrapping kubeconfig 文件
@@ -156,7 +159,7 @@ $ kubectl config set-context default \
   --kubeconfig=bootstrap.kubeconfig
 $ # 设置默认上下文
 $ kubectl config use-context default --kubeconfig=bootstrap.kubeconfig
-$ mv bootstrap.kubeconfig /etc/kubernetes/
+$ sudo mv bootstrap.kubeconfig /etc/kubernetes/
 ```
 
 + `--embed-certs` 为 `true` 时表示将 `certificate-authority` 证书写入到生成的 `bootstrap.kubeconfig` 文件中；
@@ -166,6 +169,7 @@ $ mv bootstrap.kubeconfig /etc/kubernetes/
 
 ``` bash
 $ sudo mkdir /var/lib/kubelet # 必须先创建工作目录
+### 记得改名字啊啊！！！！！！！！
 $ cat > kubelet.service <<EOF
 [Unit]
 Description=Kubernetes Kubelet
@@ -175,9 +179,9 @@ Requires=docker.service
 
 [Service]
 WorkingDirectory=/var/lib/kubelet
-ExecStart=/root/local/bin/kubelet \\
+ExecStart=/usr/bin/kubelet \\
   --address=${NODE_IP} \\
-  --hostname-override=${NODE_IP} \\
+  --hostname-override=vpn33 \\
   --pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest \\
   --experimental-bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \\
   --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \\
@@ -185,7 +189,7 @@ ExecStart=/root/local/bin/kubelet \\
   --cert-dir=/etc/kubernetes/ssl \\
   --cluster_dns=${CLUSTER_DNS_SVC_IP} \\
   --cluster_domain=${CLUSTER_DNS_DOMAIN} \\
-  --hairpin-mode promiscuous-bridge \\
+  --hairpin-mode=promiscuous-bridge \\
   --allow-privileged=true \\
   --serialize-image-pulls=false \\
   --logtostderr=true \\
@@ -244,7 +248,7 @@ $ kubectl certificate approve csr-2b308
 certificatesigningrequest "csr-2b308" approved
 $ kubectl get nodes
 NAME        STATUS    AGE       VERSION
-10.64.3.7   Ready     49m       v1.6.2
+10.8.0.50   Ready     49m       v1.6.2
 ```
 
 自动生成了 kubelet kubeconfig 文件和公私钥：
@@ -266,7 +270,7 @@ $ ls -l /etc/kubernetes/ssl/kubelet*
 创建 kube-proxy 证书签名请求：
 
 ``` bash
-$ cat kube-proxy-csr.json
+$ cat>kube-proxy-csr.json<<EOF
 {
   "CN": "system:kube-proxy",
   "hosts": [],
@@ -284,6 +288,7 @@ $ cat kube-proxy-csr.json
     }
   ]
 }
+EOF
 ```
 
 + CN 指定该证书的 User 为 `system:kube-proxy`；
@@ -326,7 +331,7 @@ $ kubectl config set-context default \
   --kubeconfig=kube-proxy.kubeconfig
 $ # 设置默认上下文
 $ kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
-$ mv kube-proxy.kubeconfig /etc/kubernetes/
+$ sudo mv kube-proxy.kubeconfig /etc/kubernetes/
 ```
 
 + 设置集群参数和客户端认证参数时 `--embed-certs` 都为 `true`，这会将 `certificate-authority`、`client-certificate` 和 `client-key` 指向的证书文件内容写入到生成的 `kube-proxy.kubeconfig` 文件中；
@@ -336,6 +341,7 @@ $ mv kube-proxy.kubeconfig /etc/kubernetes/
 
 ``` bash
 $ sudo mkdir -p /var/lib/kube-proxy # 必须先创建工作目录
+### 记得改名字！！！
 $ cat > kube-proxy.service <<EOF
 [Unit]
 Description=Kubernetes Kube-Proxy Server
@@ -344,9 +350,9 @@ After=network.target
 
 [Service]
 WorkingDirectory=/var/lib/kube-proxy
-ExecStart=/root/local/bin/kube-proxy \\
+ExecStart=/usr/bin/kube-proxy \\
   --bind-address=${NODE_IP} \\
-  --hostname-override=${NODE_IP} \\
+  --hostname-override=vpn33 \\
   --cluster-cidr=${SERVICE_CIDR} \\
   --kubeconfig=/etc/kubernetes/kube-proxy.kubeconfig \\
   --logtostderr=true \\
@@ -434,8 +440,8 @@ daemonset "nginx-ds" created
 ``` bash
 $ kubectl get nodes
 NAME        STATUS    AGE       VERSION
-10.64.3.7   Ready     8d        v1.6.2
-10.64.3.8   Ready     8d        v1.6.2
+10.8.0.50   Ready     8d        v1.6.2
+10.8.0.10   Ready     8d        v1.6.2
 ```
 
 都为 Ready 时正常。
@@ -444,8 +450,8 @@ NAME        STATUS    AGE       VERSION
 
 ``` bash
 $ kubectl get pods  -o wide|grep nginx-ds
-nginx-ds-6ktz8              1/1       Running            0          5m        172.30.25.19   10.64.3.7
-nginx-ds-6ktz9              1/1       Running            0          5m        172.30.20.20   10.64.3.8
+nginx-ds-6ktz8              1/1       Running            0          5m        172.30.25.19   10.8.0.50
+nginx-ds-6ktz9              1/1       Running            0          5m        172.30.20.20   10.8.0.10
 ```
 
 可见，nginx-ds 的 Pod IP 分别是 `172.30.25.19`、`172.30.20.20`，在所有 Node 上分别 ping 这两个 IP，看是否连通。
@@ -477,7 +483,7 @@ $
 在所有 Node 上执行：
 
 ``` bash
-$ export NODE_IP=10.64.3.7 # 当前 Node 的 IP
+$ export NODE_IP=10.8.0.50 # 当前 Node 的 IP
 $ export NODE_PORT=8744 # `kubectl get svc |grep nginx-ds` 输出中 80 端口映射的 NodePort
 $ curl ${NODE_IP}:${NODE_PORT}
 $
